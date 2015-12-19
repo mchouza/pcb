@@ -5,6 +5,7 @@
  */
 
 #include "mfcb.h"
+#include <limits.h>
 #include <memory.h>
 #include <string.h>
 
@@ -94,6 +95,31 @@ static size_t _get_critbit_pos(const char *s1, const char *s2)
         critbit_pos++;
     return critbit_pos;
 }
+
+
+/** Recursively traverses a subtree, executing a callback over every external node.
+ *
+ *  \param r Root node.
+ *  \param cb Callback to be executed over every external node.
+ *  \param ctx Context for \a cb.
+ *  \return 1 if the iteration was completed successfully, 0 otherwise.
+ *  \note The iteration is interrupted if the callback returns 0.
+ */
+static int _rec_traverse(intptr_t r, int (*cb)(const char *s, void *ctx), void *ctx)
+{
+    /* if it's an external node, just executes the calllback */
+    if (!_points_to_int_node(r))
+        return cb((const char *)r, ctx);
+
+    /* otherwise, just executes recursively over the children */
+    mfcb_node_t *rn = _get_node_ptr(r);
+    if (!_rec_traverse(rn->children[0], cb, ctx))
+        return 0;
+    if (!_rec_traverse(rn->children[1], cb, ctx))
+        return 0;
+    return 1;
+}
+
 
 
 /** Recursively frees this node and all its descendants.
@@ -277,6 +303,41 @@ const char *mfcb_find(const mfcb_t *t, const char *s)
 
     /* success */
     return (const char *)q;
+}
+
+
+/** Iterates over all suffixes of \a s in \a t.
+ *
+ *  \param t Critbit to be searched.
+ *  \param s Reference string.
+ *  \param cb Callback to be executed over every suffix of \a s in \a t.
+ *  \param ctx Context for \a cb.
+ *  \return 1 if the iteration was completed successfully, 0 otherwise.
+ *  \note The iteration is interrupted if the callback returns 0.
+ */
+int mfcb_find_suffixes(const mfcb_t *t, const char *s, int (*cb)(const char *s, void *ctx), void *ctx)
+{
+    /* if it's empty, it "succeeded" */
+    if (t->root == 0)
+        return 1;
+
+    /* gets the required critical bit position */
+    size_t critbit_pos = CHAR_BIT * strlen(s);
+
+    /* search loop for the critical node */
+    intptr_t p = t->root;
+    while (_points_to_int_node(p) && _get_node_ptr(p)->critbit_pos < critbit_pos)
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
+    intptr_t q = p;
+
+    /* checking the prefix existence */
+    while (_points_to_int_node(p))
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
+    if (memcmp((const char *)p, s, critbit_pos / 8) != 0)
+        return 1;
+
+    /* recursive traverse starting from the node */
+    return _rec_traverse(q, cb, ctx);
 }
 
 

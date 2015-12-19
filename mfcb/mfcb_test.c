@@ -18,6 +18,14 @@ static int _str_sort_cmp(const void *p, const void *q)
     return strcmp(*(const char **)p, *(const char **)q);
 }
 
+static int _sum_cb(const char *s, void *ctx)
+{
+    unsigned long long ull = 0;
+    sscanf(s, "%llu", &ull);
+    *(unsigned long long *)ctx += ull;
+    return 1;
+}
+
 static void _basic_tests(void)
 {
     mfcb_t cbt = { 0 };
@@ -107,10 +115,29 @@ static void _lex_next_tests(void)
     mfcb_clear(&cbt);
 }
 
+static void _walk_tests(void)
+{
+    mfcb_t cbt = { 0 };
+    unsigned long long tgt_sum = 0;
+    unsigned long long cb_sum = 0;
+    for (int i = 1; i < 1000000; i++)
+    {
+        char buffer[32];
+        sprintf(buffer, "%d", i);
+        if (buffer[0] == '2' && buffer[1] == '7')
+            tgt_sum += i;
+        assert(mfcb_add(&cbt, buffer) == 1);
+    }
+    assert(mfcb_find_suffixes(&cbt, "27", _sum_cb, &cb_sum) == 1);
+    assert(tgt_sum == cb_sum);
+    mfcb_clear(&cbt);
+}
+
 int main(void)
 {
     _basic_tests();
     _prime_tests();
     _lex_next_tests();
+    _walk_tests();
     return 0;
 }
