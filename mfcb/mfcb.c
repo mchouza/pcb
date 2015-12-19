@@ -79,7 +79,7 @@ static int _get_direction(const mfcb_node_t *p, const char *s)
 static size_t _get_critbit_pos(const char *s1, const char *s2)
 {
     size_t critbit_pos = 0;
-    while ((s1[critbit_pos >> 3] ^ s2[critbit_pos >> 3]) & (1 << (critbit_pos & 7)) == 0)
+    while (((s1[critbit_pos >> 3] ^ s2[critbit_pos >> 3]) & (1 << (critbit_pos & 7))) == 0)
         critbit_pos++;
     return critbit_pos;
 }
@@ -100,7 +100,7 @@ int mfcb_contains(const mfcb_t *t, const char *s)
     /* main loop */
     void *p = t->root;
     while (_points_to_int_node(p))
-        p = _get_node_ptr(p)->children[_get_direction(p, s)];
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
 
     /* final check */
     return strcmp(p, s) == 0;
@@ -138,13 +138,13 @@ int mfcb_add(mfcb_t *t, const char *s)
     void **pp = &t->root;
     while (_points_to_int_node(*pp) &&
            _get_node_ptr(*pp)->critbit_pos < critbit_pos)
-        pp = &_get_node_ptr(*pp)->children[_get_direction(*pp, s)];
+        pp = &_get_node_ptr(*pp)->children[_get_direction(_get_node_ptr(*pp), s)];
 
     /* allocates a node */
     mfcb_node_t *n = malloc(sizeof(mfcb_node_t));
     n->critbit_pos = critbit_pos;
-    n->children[s[critbit_pos >> 3] & (1 << (critbit_pos & 7)) != 0] = _strdup(s);
-    n->children[s[critbit_pos >> 3] & (1 << (critbit_pos & 7)) == 0] = *pp;
+    n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) != 0] = _strdup(s);
+    n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) == 0] = *pp;
 
     /* puts the node where it should be */
     *pp = (void*)((intptr_t)n | 1);
