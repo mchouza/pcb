@@ -1,6 +1,7 @@
 #include "mfcb.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 static int _is_prime(unsigned a)
 {
@@ -10,6 +11,11 @@ static int _is_prime(unsigned a)
         if (a % d == 0)
             return 0;
     return 1;
+}
+
+static int _str_sort_cmp(const void *p, const void *q)
+{
+    return strcmp(*(const char **)p, *(const char **)q);
 }
 
 static void _basic_tests(void)
@@ -32,6 +38,9 @@ static void _basic_tests(void)
     assert(mfcb_add(&cbt, "AAA") == 1);
     assert(mfcb_add(&cbt, "AAB") == 1);
     assert(mfcb_add(&cbt, "AAA") == 0);
+    assert(strcmp(mfcb_find(&cbt, ""), "AAA") == 0);
+    assert(strcmp(mfcb_find(&cbt, "AAA"), "AAB") == 0);
+    assert(mfcb_find(&cbt, "AAB") == NULL);
     mfcb_clear(&cbt);
 }
 
@@ -75,9 +84,33 @@ static void _prime_tests(void)
     mfcb_clear(&cbt);
 }
 
+static void _lex_next_tests(void)
+{
+    mfcb_t cbt = { 0 };
+    char **ref = malloc(1000000 * sizeof(char *));
+    for (int i = 0; i < 1000000; i++)
+    {
+        char buffer[32];
+        sprintf(buffer, "%d", i);
+        assert(mfcb_add(&cbt, buffer) == 1);
+        ref[i] = malloc(strlen(buffer) + 1);
+        strcpy(ref[i], buffer);
+    }
+    qsort(ref, 1000000, sizeof(char *), _str_sort_cmp);
+    assert(strcmp(mfcb_find(&cbt, ""), "0") == 0);
+    assert(mfcb_find(&cbt, "999999") == NULL);
+    for (int i = 0; i < 999999; i++)
+        assert(strcmp(mfcb_find(&cbt, ref[i]), ref[i+1]) == 0);
+    for (int i = 0; i < 1000000; i++)
+        free(ref[i]);
+    free(ref);
+    mfcb_clear(&cbt);
+}
+
 int main(void)
 {
     _basic_tests();
     _prime_tests();
+    _lex_next_tests();
     return 0;
 }

@@ -64,7 +64,7 @@ static mfcb_node_t *_get_node_ptr(intptr_t p)
  */
 static int _get_direction(const mfcb_node_t *p, const char *s)
 {
-    return (s[p->critbit_pos >> 3] & (1 << (p->critbit_pos & 7))) != 0;
+    return (s[p->critbit_pos >> 3] & (1 << (7 - (p->critbit_pos & 7)))) != 0;
 }
 
 
@@ -78,7 +78,7 @@ static int _get_direction(const mfcb_node_t *p, const char *s)
 static size_t _get_critbit_pos(const char *s1, const char *s2)
 {
     size_t critbit_pos = 0;
-    while (((s1[critbit_pos >> 3] ^ s2[critbit_pos >> 3]) & (1 << (critbit_pos & 7))) == 0)
+    while (((s1[critbit_pos >> 3] ^ s2[critbit_pos >> 3]) & (1 << (7 - (critbit_pos & 7)))) == 0)
         critbit_pos++;
     return critbit_pos;
 }
@@ -164,8 +164,8 @@ int mfcb_add(mfcb_t *t, const char *s)
     /* allocates a node */
     mfcb_node_t *n = malloc(sizeof(mfcb_node_t));
     n->critbit_pos = critbit_pos;
-    n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) != 0] = (intptr_t)_strdup(s);
-    n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) == 0] = *pp;
+    n->children[(s[critbit_pos >> 3] & (1 << (7 - (critbit_pos & 7)))) != 0] = (intptr_t)_strdup(s);
+    n->children[(s[critbit_pos >> 3] & (1 << (7 - (critbit_pos & 7)))) == 0] = *pp;
 
     /* puts the node where it should be */
     *pp = ((intptr_t)n | 1);
@@ -236,8 +236,35 @@ int mfcb_rem(mfcb_t *t, const char *s)
  */
 const char *mfcb_find(const mfcb_t *t, const char *s)
 {
-    /* FIXME: IMPLEMENT */
-    return NULL;
+    /* if it's empty, returns NULL */
+    if (t->root == 0)
+        return NULL;
+
+    /* search loop for p */
+    intptr_t p = t->root;
+    intptr_t q = 0;
+    while (_points_to_int_node(p))
+    {
+        int dir = _get_direction(_get_node_ptr(p), s);
+        if (dir == 0)
+            q = _get_node_ptr(p)->children[1];
+        p = _get_node_ptr(p)->children[dir];
+    }
+
+    /* if p is bigger, it's the answer */
+    if (strcmp((const char *)p, s) > 0)
+        return (const char *)p;
+
+    /* if q is still 0, there is no answer */
+    if (q == 0)
+        return NULL;
+
+    /* search loop for the minimal value in the subtree of q */
+    while (_points_to_int_node(q))
+        q = _get_node_ptr(q)->children[0];
+
+    /* success */
+    return (const char *)q;
 }
 
 
