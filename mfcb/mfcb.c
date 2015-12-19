@@ -84,6 +84,28 @@ static size_t _get_critbit_pos(const char *s1, const char *s2)
 }
 
 
+/** Recursively frees this node and all its descendants.
+ *
+ *  \param p Tagged pointer to the node.
+ */
+static void _rec_clear(intptr_t p)
+{
+    /* if it's an internal node, we have to do the recursion before freeing */
+    if (_points_to_int_node(p))
+    {
+        mfcb_node_t *pi = _get_node_ptr(p);
+        _rec_clear(pi->children[0]);
+        _rec_clear(pi->children[1]);
+        free(pi);
+    }
+    /* otherwise, we just free the node */
+    else
+    {
+        free((char *)p);
+    }
+}
+
+
 /** Checks if \a s is contained in \a t.
  *
  *  \param t Critbit tree to be checked.
@@ -161,8 +183,48 @@ int mfcb_add(mfcb_t *t, const char *s)
  */
 int mfcb_rem(mfcb_t *t, const char *s)
 {
-    /* FIXME: IMPLEMENT */
-    return 0;
+    /* if it's empty, we cannot remove anything */
+    if (t->root == 0)
+        return 0;
+
+    /* search loop */
+    intptr_t *p = &t->root;
+    intptr_t *q = NULL;
+    while (_points_to_int_node(*p))
+    {
+        q = p;
+        p = &_get_node_ptr(*p)->children[_get_direction(_get_node_ptr(*p), s)];
+    }
+
+    /* if it doesn't match, it cannot be removed */
+    if (strcmp((const char *)*p, s) != 0)
+        return 0;
+
+    /* checks if the node has a sibling */
+    if (q != NULL)
+    {
+        /* gets the sibling node */
+        intptr_t r = _get_node_ptr(*q)->children[_get_node_ptr(*q)->children[0] == *p];
+
+        /* removes the node */
+        free((char *)*p);
+
+        /* removes the parent internal node */
+        free(_get_node_ptr(*q));
+
+        /* replaces it with the sibling */
+        *q = r;
+    }
+    else
+    {
+        /* no siblings, it's root */
+        /* releases it, setting the pointer to 0 */
+        free((char *)*p);
+        *p = 0;
+    }
+
+    /* success */
+    return 1;
 }
 
 
@@ -170,7 +232,7 @@ int mfcb_rem(mfcb_t *t, const char *s)
  *
  *  \param t Critbit to be searched.
  *  \param s Reference string.
- *  \return Lexicographically smallest string in \a t that is grater than \a s or \c NULL if there is none.
+ *  \return Lexicographically smallest string in \a t that is greater than \a s or \c NULL if there is none.
  */
 const char *mfcb_find(const mfcb_t *t, const char *s)
 {
@@ -192,4 +254,18 @@ int mfcb_find_suffixes(const mfcb_t *t, const char *s, int (*cb)(const char *s, 
 {
     /* FIXME: IMPLEMENT */
     return 0;
+}
+
+
+/** Clears \a t.
+ *
+ *  \param t Critbit to be cleared.
+ */
+void mfcb_clear(mfcb_t *t)
+{
+    /* recursively clears the critbit */
+    _rec_clear(t->root);
+
+    /* sets the root to 0 */
+    t->root = 0;
 }

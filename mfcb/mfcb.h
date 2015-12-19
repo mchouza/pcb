@@ -26,6 +26,7 @@ int mfcb_add(mfcb_t *t, const char *s);
 int mfcb_rem(mfcb_t *t, const char *s);
 const char *mfcb_find(const mfcb_t *t, const char *s);
 int mfcb_find_suffixes(const mfcb_t *t, const char *s, int (*cb)(const char *s, void *ctx), void *ctx);
+void mfcb_clear(mfcb_t *t);
 
 
 #endif

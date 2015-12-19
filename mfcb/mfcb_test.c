@@ -21,6 +21,18 @@ static void _basic_tests(void)
     assert(mfcb_contains(&cbt, "AAA") == 1);
     assert(mfcb_contains(&cbt, "AAC") == 0);
     assert(mfcb_contains(&cbt, "AAB") == 1);
+    assert(mfcb_rem(&cbt, "AAA") == 1);
+    assert(mfcb_rem(&cbt, "AAA") == 0);
+    assert(mfcb_contains(&cbt, "AAA") == 0);
+    assert(mfcb_contains(&cbt, "AAB") == 1);
+    assert(mfcb_rem(&cbt, "AAB") == 1);
+    assert(mfcb_rem(&cbt, "AAB") == 0);
+    assert(mfcb_contains(&cbt, "AAA") == 0);
+    assert(mfcb_contains(&cbt, "AAB") == 0);
+    assert(mfcb_add(&cbt, "AAA") == 1);
+    assert(mfcb_add(&cbt, "AAB") == 1);
+    assert(mfcb_add(&cbt, "AAA") == 0);
+    mfcb_clear(&cbt);
 }
 
 static void _prime_tests(void)
@@ -46,6 +58,21 @@ static void _prime_tests(void)
         sprintf(buffer, "%d", i);
         assert(mfcb_add(&cbt, buffer) != _is_prime(i));
     }
+    for (int i = 1000000 - 1; i >= 1; i--)
+    {
+        if (!_is_prime(i))
+            continue;
+        char buffer[32];
+        sprintf(buffer, "%d", i);
+        assert(mfcb_rem(&cbt, buffer) == 1);
+    }
+    for (int i = 1; i < 1000000; i++)
+    {
+        char buffer[32];
+        sprintf(buffer, "%d", i);
+        assert(mfcb_rem(&cbt, buffer) != _is_prime(i));
+    }
+    mfcb_clear(&cbt);
 }
 
 int main(void)
