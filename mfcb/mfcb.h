@@ -7,6 +7,7 @@
 #ifndef MFCB_H
 #define MFCB_H
 
+#include <stdint.h>
 #include <stdlib.h>
 
 
@@ -14,7 +15,7 @@
 typedef struct
 {
     /** Root pointer. */
-    void *root;
+    intptr_t root;
 
 } mfcb_t;
 

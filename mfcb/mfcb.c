@@ -6,7 +6,6 @@
 
 #include "mfcb.h"
 #include <memory.h>
-#include <stdint.h>
 #include <string.h>
 
 
@@ -17,7 +16,7 @@ typedef struct
     size_t critbit_pos;
 
     /** Children. */
-    void *children[2];
+    intptr_t children[2];
 
 } mfcb_node_t;
 
@@ -40,9 +39,9 @@ static char *_strdup(const char *s)
  *  \param p Pointer to be checked.
  *  \return 1 if \a p points to an internal node, 0 otherwise.
  */
-static int _points_to_int_node(const void *p)
+static int _points_to_int_node(intptr_t p)
 {
-    return (intptr_t)p & 1;
+    return p & 1;
 }
 
 
@@ -51,9 +50,9 @@ static int _points_to_int_node(const void *p)
  *  \param p Tagged pointer.
  *  \return Internal node pointer.
  */
-static mfcb_node_t *_get_node_ptr( void *p )
+static mfcb_node_t *_get_node_ptr(intptr_t p)
 {
-    return (mfcb_node_t*)((intptr_t)p & (-1 << 1));
+    return (mfcb_node_t *)(p & ~(intptr_t)1);
 }
 
 
@@ -94,16 +93,16 @@ static size_t _get_critbit_pos(const char *s1, const char *s2)
 int mfcb_contains(const mfcb_t *t, const char *s)
 {
     /* exits on an empty critbit tree */
-    if (t->root == NULL)
+    if (t->root == 0)
         return 0;
 
     /* main loop */
-    void *p = t->root;
+    intptr_t p = t->root;
     while (_points_to_int_node(p))
         p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
 
     /* final check */
-    return strcmp(p, s) == 0;
+    return strcmp((const char *)p, s) == 0;
 }
 
 
@@ -116,26 +115,26 @@ int mfcb_contains(const mfcb_t *t, const char *s)
 int mfcb_add(mfcb_t *t, const char *s)
 {
     /* if it's empty, just adds it */
-    if (t->root == NULL)
+    if (t->root == 0)
     {
-        t->root = _strdup(s);
+        t->root = (intptr_t)_strdup(s);
         return 1;
     }
 
     /* search loop */
-    void *p = t->root;
+    intptr_t p = t->root;
     while (_points_to_int_node(p))
-        p = _get_node_ptr(p)->children[_get_direction(p, s)];
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
 
     /* if it matches, it cannot be added */
-    if (strcmp(p, s) == 0)
+    if (strcmp((const char *)p, s) == 0)
         return 0;
 
     /* if it doesn't match, we have a critical bit that differs */
-    size_t critbit_pos = _get_critbit_pos(p, s);
+    size_t critbit_pos = _get_critbit_pos((const char *)p, (const char *)s);
 
     /* redoes the search to see which pointer to update */
-    void **pp = &t->root;
+    intptr_t *pp = &t->root;
     while (_points_to_int_node(*pp) &&
            _get_node_ptr(*pp)->critbit_pos < critbit_pos)
         pp = &_get_node_ptr(*pp)->children[_get_direction(_get_node_ptr(*pp), s)];
@@ -143,11 +142,11 @@ int mfcb_add(mfcb_t *t, const char *s)
     /* allocates a node */
     mfcb_node_t *n = malloc(sizeof(mfcb_node_t));
     n->critbit_pos = critbit_pos;
-    n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) != 0] = _strdup(s);
+    n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) != 0] = (intptr_t)_strdup(s);
     n->children[(s[critbit_pos >> 3] & (1 << (critbit_pos & 7))) == 0] = *pp;
 
     /* puts the node where it should be */
-    *pp = (void*)((intptr_t)n | 1);
+    *pp = ((intptr_t)n | 1);
 
     /* success */
     return 1;
