@@ -56,6 +56,18 @@ static mfcb_node_t *_get_node_ptr(intptr_t p)
 }
 
 
+/** Reads a given bit from a string.
+ *
+ *  \param s String.
+ *  \param bit_pos Bit position.
+ *  \return Bit value.
+ */
+static int _get_bit( const char *s, size_t bit_pos )
+{
+    return s[bit_pos >> 3] & (1 << (7 - (bit_pos & 7)));
+}
+
+
 /** Gets the direction in a string lookup process.
  *
  *  \param p Pointer to an internal node.
@@ -64,7 +76,7 @@ static mfcb_node_t *_get_node_ptr(intptr_t p)
  */
 static int _get_direction(const mfcb_node_t *p, const char *s)
 {
-    return (s[p->critbit_pos >> 3] & (1 << (7 - (p->critbit_pos & 7)))) != 0;
+    return _get_bit(s, p->critbit_pos) != 0;
 }
 
 
@@ -164,8 +176,8 @@ int mfcb_add(mfcb_t *t, const char *s)
     /* allocates a node */
     mfcb_node_t *n = malloc(sizeof(mfcb_node_t));
     n->critbit_pos = critbit_pos;
-    n->children[(s[critbit_pos >> 3] & (1 << (7 - (critbit_pos & 7)))) != 0] = (intptr_t)_strdup(s);
-    n->children[(s[critbit_pos >> 3] & (1 << (7 - (critbit_pos & 7)))) == 0] = *pp;
+    n->children[_get_bit(s, critbit_pos) != 0] = (intptr_t)_strdup(s);
+    n->children[_get_bit(s, critbit_pos) == 0] = *pp;
 
     /* puts the node where it should be */
     *pp = ((intptr_t)n | 1);
@@ -265,22 +277,6 @@ const char *mfcb_find(const mfcb_t *t, const char *s)
 
     /* success */
     return (const char *)q;
-}
-
-
-/** Iterates over all suffixes of \a s in \a t.
- *
- *  \param t Critbit to be searched.
- *  \param s Reference string.
- *  \param cb Callback to be executed over every suffix of \a s in \a t.
- *  \param ctx Context for \a cb.
- *  \return 1 if the iteration was completed successfully, 0 otherwise.
- *  \note The iteration is interrupted if the callback returns 0.
- */
-int mfcb_find_suffixes(const mfcb_t *t, const char *s, int (*cb)(const char *s, void *ctx), void *ctx)
-{
-    /* FIXME: IMPLEMENT */
-    return 0;
 }
 
 
