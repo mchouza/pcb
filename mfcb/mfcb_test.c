@@ -133,11 +133,22 @@ static void _walk_tests(void)
     mfcb_clear(&cbt);
 }
 
+static void _read_after_0_tests(void)
+{
+    mfcb_t cbt = { 0 };
+    assert(mfcb_add(&cbt, "AAA") == 1);
+    assert(mfcb_add(&cbt, "AAB") == 1);
+    assert(mfcb_add(&cbt, (char []){ 'A', 0x00, 0xff, 0xff }) == 1);
+    assert(strcmp(mfcb_find(&cbt, ""), "A") == 0);
+    mfcb_clear(&cbt);
+}
+
 int main(void)
 {
     _basic_tests();
     _prime_tests();
     _lex_next_tests();
     _walk_tests();
+    _read_after_0_tests();
     return 0;
 }

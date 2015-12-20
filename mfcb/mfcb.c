@@ -60,12 +60,13 @@ static mfcb_node_t *_get_node_ptr(intptr_t p)
 /** Reads a given bit from a string.
  *
  *  \param s String.
+ *  \param s_len Length of \a s.
  *  \param bit_pos Bit position.
  *  \return Bit value.
  */
-static int _get_bit( const char *s, size_t bit_pos )
+static int _get_bit( const char *s, size_t s_len, size_t bit_pos )
 {
-    return s[bit_pos >> 3] & (1 << (7 - (bit_pos & 7)));
+    return bit_pos / CHAR_BIT >= s_len ? 0 : s[bit_pos >> 3] & (1 << (7 - (bit_pos & 7)));
 }
 
 
@@ -73,11 +74,12 @@ static int _get_bit( const char *s, size_t bit_pos )
  *
  *  \param p Pointer to an internal node.
  *  \param s String that is being looked up.
+ *  \param s_len Length of \a s.
  *  \return 1 means right, 0 means left.
  */
-static int _get_direction(const mfcb_node_t *p, const char *s)
+static int _get_direction(const mfcb_node_t *p, const char *s, size_t s_len)
 {
-    return _get_bit(s, p->critbit_pos) != 0;
+    return _get_bit(s, s_len, p->critbit_pos) != 0;
 }
 
 
@@ -156,10 +158,13 @@ int mfcb_contains(const mfcb_t *t, const char *s)
     if (t->root == 0)
         return 0;
 
+    /* gets the length of s */
+    size_t s_len = strlen(s);
+
     /* main loop */
     intptr_t p = t->root;
     while (_points_to_int_node(p))
-        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s, s_len)];
 
     /* final check */
     return strcmp((const char *)p, s) == 0;
@@ -181,10 +186,13 @@ int mfcb_add(mfcb_t *t, const char *s)
         return 1;
     }
 
+    /* gets the length of s */
+    size_t s_len = strlen(s);
+
     /* search loop */
     intptr_t p = t->root;
     while (_points_to_int_node(p))
-        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s, s_len)];
 
     /* if it matches, it cannot be added */
     if (strcmp((const char *)p, s) == 0)
@@ -197,13 +205,13 @@ int mfcb_add(mfcb_t *t, const char *s)
     intptr_t *pp = &t->root;
     while (_points_to_int_node(*pp) &&
            _get_node_ptr(*pp)->critbit_pos < critbit_pos)
-        pp = &_get_node_ptr(*pp)->children[_get_direction(_get_node_ptr(*pp), s)];
+        pp = &_get_node_ptr(*pp)->children[_get_direction(_get_node_ptr(*pp), s, s_len)];
 
     /* allocates a node */
     mfcb_node_t *n = malloc(sizeof(mfcb_node_t));
     n->critbit_pos = critbit_pos;
-    n->children[_get_bit(s, critbit_pos) != 0] = (intptr_t)_strdup(s);
-    n->children[_get_bit(s, critbit_pos) == 0] = *pp;
+    n->children[_get_bit(s, s_len, critbit_pos) != 0] = (intptr_t)_strdup(s);
+    n->children[_get_bit(s, s_len, critbit_pos) == 0] = *pp;
 
     /* puts the node where it should be */
     *pp = ((intptr_t)n | 1);
@@ -225,13 +233,16 @@ int mfcb_rem(mfcb_t *t, const char *s)
     if (t->root == 0)
         return 0;
 
+    /* gets the length of s */
+    size_t s_len = strlen(s);
+
     /* search loop */
     intptr_t *p = &t->root;
     intptr_t *q = NULL;
     while (_points_to_int_node(*p))
     {
         q = p;
-        p = &_get_node_ptr(*p)->children[_get_direction(_get_node_ptr(*p), s)];
+        p = &_get_node_ptr(*p)->children[_get_direction(_get_node_ptr(*p), s, s_len)];
     }
 
     /* if it doesn't match, it cannot be removed */
@@ -278,12 +289,15 @@ const char *mfcb_find(const mfcb_t *t, const char *s)
     if (t->root == 0)
         return NULL;
 
+    /* gets the length of s */
+    size_t s_len = strlen(s);
+
     /* search loop for p */
     intptr_t p = t->root;
     intptr_t q = 0;
     while (_points_to_int_node(p))
     {
-        int dir = _get_direction(_get_node_ptr(p), s);
+        int dir = _get_direction(_get_node_ptr(p), s, s_len);
         if (dir == 0)
             q = _get_node_ptr(p)->children[1];
         p = _get_node_ptr(p)->children[dir];
@@ -322,17 +336,18 @@ int mfcb_find_suffixes(const mfcb_t *t, const char *s, int (*cb)(const char *s, 
         return 1;
 
     /* gets the required critical bit position */
-    size_t critbit_pos = CHAR_BIT * strlen(s);
+    size_t s_len = strlen(s);
+    size_t critbit_pos = CHAR_BIT * s_len;
 
     /* search loop for the critical node */
     intptr_t p = t->root;
     while (_points_to_int_node(p) && _get_node_ptr(p)->critbit_pos < critbit_pos)
-        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s, s_len)];
     intptr_t q = p;
 
     /* checking the prefix existence */
     while (_points_to_int_node(p))
-        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s)];
+        p = _get_node_ptr(p)->children[_get_direction(_get_node_ptr(p), s, s_len)];
     if (memcmp((const char *)p, s, critbit_pos / 8) != 0)
         return 1;
 
