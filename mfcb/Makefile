@@ -1,8 +1,14 @@
 mfcb_test: mfcb.c mfcb.h mfcb_test.c
-	gcc -Wall -std=c11 -O3 mfcb.c mfcb_test.c -o $@
+	gcc -Wall -std=c11 -O3 -g mfcb.c mfcb_test.c -o $@
+
+mfcb_timing_test: mfcb.c mfcb.h mfcb_test.c
+	gcc -Wall -std=c11 -O3 -DTIMING_TEST mfcb.c mfcb_test.c -o $@
 
 test: mfcb_test
 	./mfcb_test
+
+timing: mfcb_timing_test
+	./mfcb_timing_test
 
 valgrind: mfcb_test
 	valgrind ./mfcb_test

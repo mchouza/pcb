@@ -1,7 +1,24 @@
+#define _GNU_SOURCE
+
 #include "mfcb.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+
+#ifdef TIMING_TEST
+    #define START_TIMING() unsigned long long _test_start = _get_timestamp()
+    #define STOP_TIMING(msg) do { printf("%s %llu\n", (msg), _get_timestamp() - _test_start); } while(0)
+    static unsigned long long _get_timestamp(void)
+    {
+        struct timespec t;
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
+        return t.tv_sec * 1000000000ull + t.tv_nsec;
+    }
+#else
+    #define START_TIMING()
+    #define STOP_TIMING(msg)
+#endif
 
 static int _is_prime(unsigned a)
 {
@@ -54,6 +71,7 @@ static void _basic_tests(void)
 
 static void _prime_tests(void)
 {
+    START_TIMING();
     mfcb_t cbt = { 0 };
     for (int i = 1; i < 1000000; i++)
     {
@@ -89,11 +107,13 @@ static void _prime_tests(void)
         sprintf(buffer, "%d", i);
         assert(mfcb_rem(&cbt, buffer) != _is_prime(i));
     }
+    STOP_TIMING("prime_tests");
     mfcb_clear(&cbt);
 }
 
 static void _lex_next_tests(void)
 {
+    START_TIMING();
     mfcb_t cbt = { 0 };
     char **ref = malloc(1000000 * sizeof(char *));
     for (int i = 0; i < 1000000; i++)
@@ -112,11 +132,13 @@ static void _lex_next_tests(void)
     for (int i = 0; i < 1000000; i++)
         free(ref[i]);
     free(ref);
+    STOP_TIMING("lex_next_tests");
     mfcb_clear(&cbt);
 }
 
 static void _walk_tests(void)
 {
+    START_TIMING();
     mfcb_t cbt = { 0 };
     unsigned long long tgt_sum = 0;
     unsigned long long cb_sum = 0;
@@ -130,6 +152,7 @@ static void _walk_tests(void)
     }
     assert(mfcb_find_suffixes(&cbt, "27", _sum_cb, &cb_sum) == 1);
     assert(tgt_sum == cb_sum);
+    STOP_TIMING("walk_tests");
     mfcb_clear(&cbt);
 }
 
