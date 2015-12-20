@@ -4,6 +4,9 @@ mfcb_test: mfcb.c mfcb.h mfcb_test.c
 test: mfcb_test
 	./mfcb_test
 
+valgrind: mfcb_test
+	valgrind ./mfcb_test
+
 clean:
 	rm -f mfcb_test
 
