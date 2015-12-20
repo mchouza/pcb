@@ -13,7 +13,10 @@ timing: mfcb_timing_test
 valgrind: mfcb_test
 	valgrind ./mfcb_test
 
-clean:
-	rm -f mfcb_test
+callgrind: mfcb_test
+	valgrind --tool=callgrind --callgrind-out-file=callgrind.out ./mfcb_test
 
-.PHONY: test clean
+clean:
+	rm -f mfcb_test mfcb_timing_test callgrind.out
+
+.PHONY: test timing valgrind callgrind clean
