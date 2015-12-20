@@ -113,26 +113,31 @@ static void _prime_tests(void)
 
 static void _lex_next_tests(void)
 {
-    START_TIMING();
-    mfcb_t cbt = { 0 };
     char **ref = malloc(1000000 * sizeof(char *));
     for (int i = 0; i < 1000000; i++)
     {
         char buffer[32];
         sprintf(buffer, "%d", i);
-        assert(mfcb_add(&cbt, buffer) == 1);
         ref[i] = malloc(strlen(buffer) + 1);
         strcpy(ref[i], buffer);
     }
     qsort(ref, 1000000, sizeof(char *), _str_sort_cmp);
+    START_TIMING();
+    mfcb_t cbt = { 0 };
+    for (int i = 0; i < 1000000; i++)
+    {
+        char buffer[32];
+        sprintf(buffer, "%d", i);
+        assert(mfcb_add(&cbt, buffer) == 1);
+    }
     assert(strcmp(mfcb_find(&cbt, ""), "0") == 0);
     assert(mfcb_find(&cbt, "999999") == NULL);
     for (int i = 0; i < 999999; i++)
         assert(strcmp(mfcb_find(&cbt, ref[i]), ref[i+1]) == 0);
+    STOP_TIMING("lex_next_tests");
     for (int i = 0; i < 1000000; i++)
         free(ref[i]);
     free(ref);
-    STOP_TIMING("lex_next_tests");
     mfcb_clear(&cbt);
 }
 
