@@ -6,7 +6,6 @@
 
 #define SCUNIT_C
 #include "scunit.h"
-#include <dlfcn.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,6 +91,28 @@ static int _cmp_test(const void *p1, const void *p2)
 }
 
 
+/** Gets suite name for the file name.
+ *
+ *  \param filename Suite file name.
+ *  \return Suite name.
+ *  \note The suite name should be freed by the caller.
+ */
+static char *_get_suite_name(const char *filename)
+{
+    /* duplicates the filename */
+    char *suite_name = malloc(strlen(filename) + 1);
+    strcpy(suite_name, filename);
+
+    /* checks if it needs to remove the suffix */
+    char *last_dot_pos = strrchr(suite_name, '.');
+    if (last_dot_pos != NULL)
+        *last_dot_pos = '\0';
+
+    /* returns the suite name */
+    return suite_name;
+}
+
+
 /** Gets suites array.
  *
  *  \param num_suites Number of test suites (output).
@@ -126,10 +147,10 @@ static void _get_suites_arr(size_t *num_suites, size_t *num_tests, scunit_suite_
         if (strcmp(n->suite_name, prev_suite_name))
         {
             prev_suite_name = n->suite_name;
+            (*test_suites)[si].suite_name = _get_suite_name(n->suite_name);
             si++;
         }
         (*test_suites)[si-1].num_tests++;
-        (*test_suites)[si-1].suite_name = n->suite_name;
     }
 
     /* allocates the test arrays */
@@ -161,7 +182,10 @@ static void _get_suites_arr(size_t *num_suites, size_t *num_tests, scunit_suite_
 static void _release_suites_arr(scunit_suite_t *test_suites, size_t num_suites)
 {
     for (size_t i = 0; i < num_suites; i++)
+    {
+        free((void *)test_suites[i].suite_name);
         free((void *)test_suites[i].tests);
+    }
     free(test_suites);
 }
 

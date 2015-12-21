@@ -7,6 +7,8 @@
 #ifndef SCUNIT_H
 #define SCUNIT_H
 
+#include <stdio.h>
+
 
 /** Defines a test with a given ID. A block is expected next. */
 #define TEST(id)\
