@@ -33,56 +33,136 @@ typedef struct scunit_test_node_t
     /** Next node. */
     struct scunit_test_node_t *next;
 
+    /** Failed. */
+    int failed;
+
 } scunit_test_node_t;
+
+
+/** Test suite entry type. */
+typedef struct
+{
+    /** Suite name. */
+    const char *suite_name;
+
+    /** Number of tests. */
+    size_t num_tests;
+
+    /** Tests. */
+    scunit_test_node_t **tests;
+
+} scunit_suite_t;
 
 
 /** Tests list. */
 static scunit_test_node_t *_tests_list = NULL;
 
 
-/** Test node comparison function.
+/** Compares two suites.
  *
- *  \param p1 First node.
- *  \param p2 Second node.
- *  \return Comparison result.
+ *  \param p1 First suite.
+ *  \param p2 Second suite.
+ *  \return Comparison value.
  */
-static int _cmp_test_node(const void *p1, const void *p2)
+static int _cmp_suite(const void *p1, const void *p2)
 {
-    /* gets the node pointers */
-    const scunit_test_node_t *n1 = *(const scunit_test_node_t **)p1;
-    const scunit_test_node_t *n2 = *(const scunit_test_node_t **)p2;
+    /* gets the suites */
+    const scunit_suite_t *s1 = (const scunit_suite_t *)p1;
+    const scunit_suite_t *s2 = (const scunit_suite_t *)p2;
 
-    /* compares the suite names and test names */
-    int suite_names_cmp = strcmp(n1->suite_name, n2->suite_name);
-    int test_names_cmp = strcmp(n1->test_name, n2->test_name);
-
-    /* returns the comparison result */
-    return (suite_names_cmp != 0) ? suite_names_cmp : test_names_cmp;
+    /* compares the names */
+    return strcmp(s1->suite_name, s2->suite_name);
 }
 
 
-/** Gets sorted test array.
+/** Compares two tests nodes (assuming same suite).
  *
- *  \return Sorted, \c NULL terminated, test array.
+ *  \param p1 First suite.
+ *  \param p2 Second suite.
+ *  \return Comparison value.
  */
-static scunit_test_node_t **_get_test_arr(void)
+static int _cmp_test(const void *p1, const void *p2)
 {
-    /* counts the number of tests */
-    size_t num_tests = 0;
-    for (scunit_test_node_t *n = _tests_list; n != NULL; n = n->next)
-        num_tests++;
+    /* gets the test nodes */
+    const scunit_test_node_t *n1 = *(const scunit_test_node_t **)p1;
+    const scunit_test_node_t *n2 = *(const scunit_test_node_t **)p2;
 
-    /* creates an array of the proper size and fills it */
-    size_t i = 0;
-    scunit_test_node_t **ret = calloc(num_tests + 1, sizeof(scunit_test_node_t *));
-    for (scunit_test_node_t *n = _tests_list; n != NULL; n = n->next)
-        ret[i++] = n;
+    /* compares the test names */
+    return strcmp(n1->test_name, n2->test_name);
+}
 
-    /* sorts the array */
-    qsort(ret, num_tests, sizeof(scunit_test_node_t *), _cmp_test_node);
 
-    /* returns it */
-    return ret;
+/** Gets suites array.
+ *
+ *  \param num_suites Number of test suites (output).
+ *  \param num_tests Number of tests (output).
+ *  \param test_suites Test suites array (output).
+ *  \param tests_list Tests list.
+ */
+static void _get_suites_arr(size_t *num_suites, size_t *num_tests, scunit_suite_t **test_suites, scunit_test_node_t *tests_list)
+{
+    /* counts the suites & tests */
+    const char *prev_suite_name = "";
+    *num_suites = 0;
+    *num_tests = 0;
+    for (const scunit_test_node_t *n = tests_list; n != NULL; n = n->next)
+    {
+        if (strcmp(n->suite_name, prev_suite_name))
+        {
+            prev_suite_name = n->suite_name;
+            (*num_suites)++;
+        }
+        (*num_tests)++;
+    }
+
+    /* builds the suites array */
+    *test_suites = calloc(*num_suites, sizeof(scunit_suite_t));
+
+    /* counts the tests per suite and loads the suite names */
+    prev_suite_name = "";
+    size_t si = 0;
+    for (const scunit_test_node_t *n = tests_list; n != NULL; n = n->next)
+    {
+        if (strcmp(n->suite_name, prev_suite_name))
+        {
+            prev_suite_name = n->suite_name;
+            si++;
+        }
+        (*test_suites)[si-1].num_tests++;
+        (*test_suites)[si-1].suite_name = n->suite_name;
+    }
+
+    /* allocates the test arrays */
+    for (size_t i = 0; i < *num_suites; i++)
+        (*test_suites)[i].tests = calloc((*test_suites)[i].num_tests, sizeof(scunit_test_node_t *));
+
+    /* stores the tests, in sorted order */
+    scunit_test_node_t *n = tests_list;
+    for (size_t i = 0; i < *num_suites; i++)
+    {
+        for (size_t j = 0; j < (*test_suites)[i].num_tests; j++)
+        {
+            (*test_suites)[i].tests[j] = n;
+            n = n->next;
+        }
+        qsort((*test_suites)[i].tests, (*test_suites)[i].num_tests, sizeof(scunit_test_node_t *), _cmp_test);
+    }
+
+    /* sorts the suites */
+    qsort(*test_suites, *num_suites, sizeof(scunit_suite_t), _cmp_suite);
+}
+
+
+/** Releases suites array.
+ *
+ *  \param test_suites Test suites array.
+ *  \param num_suites Number of test suites.
+ */
+static void _release_suites_arr(scunit_suite_t *test_suites, size_t num_suites)
+{
+    for (size_t i = 0; i < num_suites; i++)
+        free((void *)test_suites[i].tests);
+    free(test_suites);
 }
 
 
@@ -94,29 +174,76 @@ static int _run_all_tests(void)
 {
     /* error code */
     int error_code = 0;
+    /* number of suites */
+    size_t num_suites = 0;
+    /* number of tests */
+    size_t num_tests = 0;
+    /* suites array */
+    scunit_suite_t *suites = NULL;
+    /* number of successes */
+    size_t num_success = 0;
+    /* number of failures */
+    size_t num_fail = 0;
 
-    /* gets the test array */
-    scunit_test_node_t **test_arr = _get_test_arr();
+    /* gets the suites array */
+    _get_suites_arr(&num_suites, &num_tests, &suites, _tests_list);
 
-    /* goes over all the tests */
-    for (size_t i = 0; test_arr[i] != NULL; i++)
+    /* prints header */
+    printf("[==========] Running %zu test(s) from %zu suite(s).\n", num_tests, num_suites);
+
+    /* goes over every suite */
+    for (size_t i = 0; i < num_suites; i++)
     {
-        printf("Executing %s.%s...\n", test_arr[i]->suite_name, test_arr[i]->test_name);
-        int test_err_code = 0;
-        test_arr[i]->test_func(&test_err_code);
-        if (test_err_code != 0)
+        /* prints suite header */
+        printf("[----------] %zu test(s) from %s\n", suites[i].num_tests, suites[i].suite_name);
+
+        /* goes over every test */
+        for (size_t j = 0; j < suites[i].num_tests; j++)
         {
-            printf("Error!!!\n");
-            error_code = 1;
-        }
-        else
-        {
-            printf("Success.\n");
+            /* prints the test header */
+            printf("[ RUN      ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+
+            /* executes the test */
+            int test_error = 0;
+            suites[i].tests[j]->test_func(&test_error);
+
+            /* checks if it failed */
+            if (test_error != 0)
+            {
+                /* prints the failure indicator */
+                printf("[  FAILED  ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+
+                /* marks its failure */
+                suites[i].tests[j]->failed = 1;
+
+                /* updates the failure counter */
+                num_fail++;
+            }
+            else
+            {
+                /* prints the success indicator */
+                printf("[       OK ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+
+                /* updates the success counter */
+                num_success++;
+            }
         }
     }
 
-    /* releases the test array */
-    free(test_arr);
+    /* prints footer */
+    printf("[==========] %zu test(s) from %zu suite(s) ran.\n", num_tests, num_suites);
+    printf("[  PASSED  ] %zu test(s).\n", num_success);
+    if (num_fail > 0)
+    {
+        printf("[  FAILED  ] %zu test(s), listed below:\n", num_fail);
+        for (size_t i = 0; i < num_suites; i++)
+            for (size_t j = 0; j < suites[i].num_tests; j++)
+                if (suites[i].tests[j]->failed)
+                    printf("[  FAILED  ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+    }
+
+    /* releases the suites array */
+    _release_suites_arr(suites, num_suites);
 
     /* returns the error code */
     return error_code;
@@ -146,7 +273,7 @@ static void _release_tests_list(void)
 void scunit_register(scunit_test_func_t *test_func, const char *test_name, const char *suite_name)
 {
     /* creates a new node */
-    scunit_test_node_t *n = malloc(sizeof(scunit_test_node_t));
+    scunit_test_node_t *n = calloc(1, sizeof(scunit_test_node_t));
     n->test_func = test_func;
     n->test_name = test_name;
     n->suite_name = suite_name;

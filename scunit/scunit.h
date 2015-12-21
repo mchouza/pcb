@@ -27,7 +27,7 @@
     {\
         if (!(e))\
         {\
-            fprintf(stderr, "%s failed(" __FILE__ ":" STR(__LINE__) "): '" #true_e "' was expected to be " expected ".\n", (is_assert) ? "Assertion" : "Expectation" );\
+            printf("%s failed (" __FILE__ ":" STR(__LINE__) "): '" #true_e "' was expected to be " expected ".\n", (is_assert) ? "Assertion" : "Expectation" );\
             *scunit__test_failed = 1;\
             if (is_assert)\
                 return;\
