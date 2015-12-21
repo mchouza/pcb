@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* protects agains redefinition of main */
 #ifdef main
@@ -55,6 +56,18 @@ typedef struct
 
 /** Tests list. */
 static scunit_test_node_t *_tests_list = NULL;
+
+
+/** Error ANSI sequence. */
+static const char *_err_ansi_seq = "\x1b[31;1m";
+
+
+/** Success ANSI sequence. */
+static const char *_ok_ansi_seq = "\x1b[32;1m";
+
+
+/** Normal ANSI sequence. */
+static const char *_normal_ansi_seq = "\x1b[0m";
 
 
 /** Compares two suites.
@@ -213,19 +226,19 @@ static int _run_all_tests(void)
     _get_suites_arr(&num_suites, &num_tests, &suites, _tests_list);
 
     /* prints header */
-    printf("[==========] Running %zu test(s) from %zu suite(s).\n", num_tests, num_suites);
+    printf("%s[==========]%s Running %zu test(s) from %zu suite(s).\n", _ok_ansi_seq, _normal_ansi_seq, num_tests, num_suites);
 
     /* goes over every suite */
     for (size_t i = 0; i < num_suites; i++)
     {
         /* prints suite header */
-        printf("[----------] %zu test(s) from %s\n", suites[i].num_tests, suites[i].suite_name);
+        printf("%s[----------]%s %zu test(s) from %s\n", _ok_ansi_seq, _normal_ansi_seq, suites[i].num_tests, suites[i].suite_name);
 
         /* goes over every test */
         for (size_t j = 0; j < suites[i].num_tests; j++)
         {
             /* prints the test header */
-            printf("[ RUN      ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+            printf("%s[ RUN      ]%s %s.%s\n", _ok_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
 
             /* executes the test */
             int test_error = 0;
@@ -235,7 +248,7 @@ static int _run_all_tests(void)
             if (test_error != 0)
             {
                 /* prints the failure indicator */
-                printf("[  FAILED  ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+                printf("%s[  FAILED  ]%s %s.%s\n", _err_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
 
                 /* marks its failure */
                 suites[i].tests[j]->failed = 1;
@@ -246,7 +259,7 @@ static int _run_all_tests(void)
             else
             {
                 /* prints the success indicator */
-                printf("[       OK ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+                printf("%s[       OK ]%s %s.%s\n", _ok_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
 
                 /* updates the success counter */
                 num_success++;
@@ -255,15 +268,15 @@ static int _run_all_tests(void)
     }
 
     /* prints footer */
-    printf("[==========] %zu test(s) from %zu suite(s) ran.\n", num_tests, num_suites);
-    printf("[  PASSED  ] %zu test(s).\n", num_success);
+    printf("%s[==========]%s %zu test(s) from %zu suite(s) ran.\n", _ok_ansi_seq, _normal_ansi_seq, num_tests, num_suites);
+    printf("%s[  PASSED  ]%s %zu test(s).\n", _ok_ansi_seq, _normal_ansi_seq, num_success);
     if (num_fail > 0)
     {
-        printf("[  FAILED  ] %zu test(s), listed below:\n", num_fail);
+        printf("%s[  FAILED  ]%s %zu test(s), listed below:\n", _err_ansi_seq, _normal_ansi_seq, num_fail);
         for (size_t i = 0; i < num_suites; i++)
             for (size_t j = 0; j < suites[i].num_tests; j++)
                 if (suites[i].tests[j]->failed)
-                    printf("[  FAILED  ] %s.%s\n", suites[i].suite_name, suites[i].tests[j]->test_name);
+                    printf("%s[  FAILED  ]%s %s.%s\n", _err_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
     }
 
     /* releases the suites array */
@@ -314,6 +327,14 @@ void scunit_register(scunit_test_func_t *test_func, const char *test_name, const
  */
 int main(void)
 {
+    /* if stdout is not a terminal, disables the coloring */
+    if (isatty(STDOUT_FILENO) != 1)
+    {
+        _normal_ansi_seq = "";
+        _ok_ansi_seq = "";
+        _err_ansi_seq = "";
+    }
+
     /* just runs all tests */
     int exit_code = _run_all_tests();
 
