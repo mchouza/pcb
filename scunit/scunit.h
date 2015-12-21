@@ -16,8 +16,10 @@
 
 
 /** Stringify macro. */
-#define STR(s) #s
+#define STR(s) _STR(s)
 
+/** Stringify auxiliary macro. */
+#define _STR(s) #s
 
 /** Basic assertion macro. */
 #define GEN_EXP_ASSERT(is_assert, e, true_e, expected)\
@@ -25,7 +27,7 @@
     {\
         if (!(e))\
         {\
-            fprintf(stderr, "%s failed(" __FILE__ ":"  "): '" #true_e "' was expected to be " expected ".\n", (is_assert) ? "Assertion" : "Expectation" );\
+            fprintf(stderr, "%s failed(" __FILE__ ":" STR(__LINE__) "): '" #true_e "' was expected to be " expected ".\n", (is_assert) ? "Assertion" : "Expectation" );\
             *scunit__test_failed = 1;\
             if (is_assert)\
                 return;\
