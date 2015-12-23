@@ -5,11 +5,13 @@
  */
 
 #define SCUNIT_C
+#define _GNU_SOURCE
 #include "scunit.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 /* protects agains redefinition of main */
@@ -35,6 +37,9 @@ typedef struct scunit_test_node_t
 
     /** Failed. */
     int failed;
+
+    /** Dummy order variable (required because qsort() is not stable). */
+    int order;
 
 } scunit_test_node_t;
 
@@ -70,6 +75,18 @@ static const char *_ok_ansi_seq = "\x1b[32;1m";
 static const char *_normal_ansi_seq = "\x1b[0m";
 
 
+/** Gets a monotonic timestamp.
+ *
+ *  \return Monotonic timestamp in nanoseconds.
+ */
+static unsigned long long _get_timestamp(void)
+{
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec * 1000000000ull + t.tv_nsec;
+}
+
+
 /** Compares two suites.
  *
  *  \param p1 First suite.
@@ -99,8 +116,8 @@ static int _cmp_test(const void *p1, const void *p2)
     const scunit_test_node_t *n1 = *(const scunit_test_node_t **)p1;
     const scunit_test_node_t *n2 = *(const scunit_test_node_t **)p2;
 
-    /* compares the test names */
-    return strcmp(n1->test_name, n2->test_name);
+    /* compares the test order values (reverse of normal ordering) */
+    return n1->order > n2->order ? -1 : (n1->order < n2->order ? 1 : 0);
 }
 
 
@@ -139,13 +156,14 @@ static void _get_suites_arr(size_t *num_suites, size_t *num_tests, scunit_suite_
     const char *prev_suite_name = "";
     *num_suites = 0;
     *num_tests = 0;
-    for (const scunit_test_node_t *n = tests_list; n != NULL; n = n->next)
+    for (scunit_test_node_t *n = tests_list; n != NULL; n = n->next)
     {
         if (strcmp(n->suite_name, prev_suite_name))
         {
             prev_suite_name = n->suite_name;
             (*num_suites)++;
         }
+        n->order = *num_tests;
         (*num_tests)++;
     }
 
@@ -225,18 +243,27 @@ static int _run_all_tests(void)
     /* gets the suites array */
     _get_suites_arr(&num_suites, &num_tests, &suites, _tests_list);
 
+    /* gets the general start */
+    unsigned long long all_tests_start = _get_timestamp();
+
     /* prints header */
     printf("%s[==========]%s Running %zu test(s) from %zu suite(s).\n", _ok_ansi_seq, _normal_ansi_seq, num_tests, num_suites);
 
     /* goes over every suite */
     for (size_t i = 0; i < num_suites; i++)
     {
+        /* gets the suite start */
+        unsigned long long suite_start = _get_timestamp();
+
         /* prints suite header */
         printf("%s[----------]%s %zu test(s) from %s\n", _ok_ansi_seq, _normal_ansi_seq, suites[i].num_tests, suites[i].suite_name);
 
         /* goes over every test */
         for (size_t j = 0; j < suites[i].num_tests; j++)
         {
+            /* gets the test start */
+            unsigned long long test_start = _get_timestamp();
+
             /* prints the test header */
             printf("%s[ RUN      ]%s %s.%s\n", _ok_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
 
@@ -248,7 +275,12 @@ static int _run_all_tests(void)
             if (test_error != 0)
             {
                 /* prints the failure indicator */
-                printf("%s[  FAILED  ]%s %s.%s\n", _err_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
+                printf("%s[  FAILED  ]%s %s.%s (%llu ms)\n",
+                       _err_ansi_seq,
+                       _normal_ansi_seq,
+                       suites[i].suite_name,
+                       suites[i].tests[j]->test_name,
+                       (_get_timestamp() - test_start) / 1000000ull);
 
                 /* marks its failure */
                 suites[i].tests[j]->failed = 1;
@@ -259,16 +291,34 @@ static int _run_all_tests(void)
             else
             {
                 /* prints the success indicator */
-                printf("%s[       OK ]%s %s.%s\n", _ok_ansi_seq, _normal_ansi_seq, suites[i].suite_name, suites[i].tests[j]->test_name);
+                printf("%s[       OK ]%s %s.%s (%llu ms)\n",
+                       _ok_ansi_seq,
+                       _normal_ansi_seq,
+                       suites[i].suite_name,
+                       suites[i].tests[j]->test_name,
+                       (_get_timestamp() - test_start) / 1000000ull);
 
                 /* updates the success counter */
                 num_success++;
             }
         }
+
+        /* prints suite footer */
+        printf("%s[----------]%s %zu test(s) from %s (%llu ms total)\n",
+               _ok_ansi_seq,
+               _normal_ansi_seq,
+               suites[i].num_tests,
+               suites[i].suite_name,
+               (_get_timestamp() - suite_start) / 1000000ull);
     }
 
     /* prints footer */
-    printf("%s[==========]%s %zu test(s) from %zu suite(s) ran.\n", _ok_ansi_seq, _normal_ansi_seq, num_tests, num_suites);
+    printf("%s[==========]%s %zu test(s) from %zu suite(s) ran (%llu ms total).\n",
+           _ok_ansi_seq,
+           _normal_ansi_seq,
+           num_tests,
+           num_suites,
+           (_get_timestamp() - all_tests_start) / 1000000ull);
     printf("%s[  PASSED  ]%s %zu test(s).\n", _ok_ansi_seq, _normal_ansi_seq, num_success);
     if (num_fail > 0)
     {

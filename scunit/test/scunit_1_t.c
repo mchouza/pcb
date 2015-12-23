@@ -1,7 +1,9 @@
 #include "scunit/scunit.h"
+#include <unistd.h>
 
 TEST(First)
 {
+    sleep(1);
     EXPECT_TRUE(1);
     EXPECT_FALSE(1);
     EXPECT_FALSE(0);
@@ -17,5 +19,6 @@ TEST(First)
 
 TEST(Second)
 {
+    sleep(2);
     ASSERT_EQ(1, 1);
 }
