@@ -12,9 +12,9 @@
 
 /** Defines a test with a given ID. A block is expected next. */
 #define TEST(id)\
-    void scunit__ ## id ## _test(int *scunit__test_failed);\
+    static void scunit__ ## id ## _test(int *scunit__test_failed);\
     __attribute__((constructor)) void scunit__ ## id ## _reg(void) { scunit_register(scunit__ ## id ## _test, #id, __FILE__); };\
-    void scunit__ ## id ## _test(int *scunit__test_failed)
+    static void scunit__ ## id ## _test(int *scunit__test_failed)
 
 
 /** Stringify macro. */
