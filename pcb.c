@@ -5,7 +5,16 @@
  */
 
 #include "pcb.h"
+#include <stdint.h>
 #include <stdlib.h>
+
+
+/** Pooled CritBit type. */
+struct pcb_t
+{
+    /** Root of the tree. */
+    intptr_t root;
+};
 
 
 /** Adds a string to the critbit.
