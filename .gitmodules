@@ -1,0 +1,3 @@
+[submodule "third-party/blt"]
+	path = third-party/blt
+	url = https://github.com/blynn/blt.git
