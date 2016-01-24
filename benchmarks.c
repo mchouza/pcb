@@ -8,10 +8,32 @@
 
 #include "mfcb/mfcb.h"
 #include "third-party/blt/blt.h"
+#include "pcb.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+
+/** Number of iterations to do. */
+#ifndef NUM_ITERS
+    #define NUM_ITERS 3
+#endif
+
+/** Whether to benchmark MFCB. */
+#ifndef BENCH_MFCB
+    #define BENCH_MFCB 1
+#endif
+
+/** Whether to benchmark BLT. */
+#ifndef BENCH_BLT
+    #define BENCH_BLT 1
+#endif
+
+/** Whether to benchmark PCB. */
+#ifndef BENCH_PCB
+    #define BENCH_PCB 1
+#endif
 
 
 /** BLT suite number of sequential keys. */
@@ -110,59 +132,96 @@ int main(void)
     char **blt_suite_keys = NULL;
     _init_blt_suite_keys(&blt_suite_num_keys, &blt_suite_keys);
 
-    /* MFCB test */
-    #define PCBB_CB_DEF(id) mfcb_t id = { 0 }
-    #define PCBB_CB_IT_DEF(id) const char *id = NULL
-    #define PCBB_CB_CB_FUNC_DEF(id, f) int (*id)(const char *, void *) = (int (*)(const char *, void *))f
-    #define PCBB_CB_INIT(id) 
-    #define PCBB_CB_ADD(id, s) mfcb_add(&id, s)
-    #define PCBB_CB_GET(id, s) mfcb_contains(&id, s)
-    #define PCBB_CB_FIRST(id) mfcb_find(&id, "")
-    #define PCBB_CB_NEXT(id, it) mfcb_find(&id, it)
-    #define PCBB_CB_ALL_SUFFIXES(id, s, cb) mfcb_find_suffixes(&id, s, cb, NULL)
-    #define PCBB_CB_DELETE(id, s) mfcb_rem(&id, s)
-    #define PCBB_CB_RELEASE(id) mfcb_clear(&id)
-    #define PCBB_TIMER_END(timer_str) PCBB_TIMER_GEN_END("mfcb", timer_str)
-    #include "benchmark.inc"
-    #undef PCBB_CB_DEF
-    #undef PCBB_CB_IT_DEF
-    #undef PCBB_CB_CB_FUNC_DEF
-    #undef PCBB_CB_INIT
-    #undef PCBB_CB_ADD
-    #undef PCBB_CB_GET
-    #undef PCBB_CB_FIRST
-    #undef PCBB_CB_NEXT
-    #undef PCBB_CB_ALL_SUFFIXES
-    #undef PCBB_CB_DELETE
-    #undef PCBB_CB_RELEASE
-    #undef PCBB_TIMER_END
+    /* iterates all tests many times */
+    for (size_t i = 0; i < NUM_ITERS; i++)
+    {
+        /* MFCB test */
+        #if BENCH_MFCB
+        #define PCBB_CB_DEF(id) mfcb_t id = { 0 }
+        #define PCBB_CB_IT_DEF(id) const char *id = NULL
+        #define PCBB_CB_CB_FUNC_DEF(id, f) int (*id)(const char *, void *) = (int (*)(const char *, void *))f
+        #define PCBB_CB_INIT(id) 
+        #define PCBB_CB_ADD(id, s) mfcb_add(&id, s)
+        #define PCBB_CB_GET(id, s) mfcb_contains(&id, s)
+        #define PCBB_CB_FIRST(id) mfcb_find(&id, "")
+        #define PCBB_CB_NEXT(id, it) mfcb_find(&id, it)
+        #define PCBB_CB_ALL_SUFFIXES(id, s, cb) mfcb_find_suffixes(&id, s, cb, NULL)
+        #define PCBB_CB_DELETE(id, s) mfcb_rem(&id, s)
+        #define PCBB_CB_RELEASE(id) mfcb_clear(&id)
+        #define PCBB_TIMER_END(timer_str) PCBB_TIMER_GEN_END("mfcb", timer_str)
+        #include "benchmark.inc"
+        #undef PCBB_CB_DEF
+        #undef PCBB_CB_IT_DEF
+        #undef PCBB_CB_CB_FUNC_DEF
+        #undef PCBB_CB_INIT
+        #undef PCBB_CB_ADD
+        #undef PCBB_CB_GET
+        #undef PCBB_CB_FIRST
+        #undef PCBB_CB_NEXT
+        #undef PCBB_CB_ALL_SUFFIXES
+        #undef PCBB_CB_DELETE
+        #undef PCBB_CB_RELEASE
+        #undef PCBB_TIMER_END
+        #endif
 
-    /* BLT test */
-    #define PCBB_CB_DEF(id) BLT *id = NULL
-    #define PCBB_CB_IT_DEF(id) BLT_IT *id = NULL
-    #define PCBB_CB_CB_FUNC_DEF(id, f) int (*id)(BLT_IT *) = (int (*)(BLT_IT *))f
-    #define PCBB_CB_INIT(id) id = blt_new()
-    #define PCBB_CB_ADD(id, s) blt_set(id, s)
-    #define PCBB_CB_GET(id, s) blt_get(id, s)
-    #define PCBB_CB_FIRST(id) blt_first(id)
-    #define PCBB_CB_NEXT(id, it) blt_next(id, it)
-    #define PCBB_CB_ALL_SUFFIXES(id, s, cb) blt_allprefixed(id, s, cb)
-    #define PCBB_CB_DELETE(id, s) blt_delete(id, s)
-    #define PCBB_CB_RELEASE(id) blt_clear(id)
-    #define PCBB_TIMER_END(timer_str) PCBB_TIMER_GEN_END("blt", timer_str)
-    #include "benchmark.inc"
-    #undef PCBB_CB_DEF
-    #undef PCBB_CB_IT_DEF
-    #undef PCBB_CB_CB_FUNC_DEF
-    #undef PCBB_CB_INIT
-    #undef PCBB_CB_ADD
-    #undef PCBB_CB_GET
-    #undef PCBB_CB_FIRST
-    #undef PCBB_CB_NEXT
-    #undef PCBB_CB_ALL_SUFFIXES
-    #undef PCBB_CB_DELETE
-    #undef PCBB_CB_RELEASE
-    #undef PCBB_TIMER_END
+        /* BLT test */
+        #if BENCH_BLT
+        #define PCBB_CB_DEF(id) BLT *id = NULL
+        #define PCBB_CB_IT_DEF(id) BLT_IT *id = NULL
+        #define PCBB_CB_CB_FUNC_DEF(id, f) int (*id)(BLT_IT *) = (int (*)(BLT_IT *))f
+        #define PCBB_CB_INIT(id) id = blt_new()
+        #define PCBB_CB_ADD(id, s) blt_set(id, s)
+        #define PCBB_CB_GET(id, s) blt_get(id, s)
+        #define PCBB_CB_FIRST(id) blt_first(id)
+        #define PCBB_CB_NEXT(id, it) blt_next(id, it)
+        #define PCBB_CB_ALL_SUFFIXES(id, s, cb) blt_allprefixed(id, s, cb)
+        #define PCBB_CB_DELETE(id, s) blt_delete(id, s)
+        #define PCBB_CB_RELEASE(id) blt_clear(id)
+        #define PCBB_TIMER_END(timer_str) PCBB_TIMER_GEN_END("blt", timer_str)
+        #include "benchmark.inc"
+        #undef PCBB_CB_DEF
+        #undef PCBB_CB_IT_DEF
+        #undef PCBB_CB_CB_FUNC_DEF
+        #undef PCBB_CB_INIT
+        #undef PCBB_CB_ADD
+        #undef PCBB_CB_GET
+        #undef PCBB_CB_FIRST
+        #undef PCBB_CB_NEXT
+        #undef PCBB_CB_ALL_SUFFIXES
+        #undef PCBB_CB_DELETE
+        #undef PCBB_CB_RELEASE
+        #undef PCBB_TIMER_END
+        #endif
+
+        /* PCB test */
+        #if BENCH_PCB
+        #define PCBB_CB_DEF(id) pcb_t *id = NULL
+        #define PCBB_CB_IT_DEF(id) const char *id = NULL
+        #define PCBB_CB_CB_FUNC_DEF(id, f) int (*id)(const char *, void *) = (int (*)(const char *, void *))f
+        #define PCBB_CB_INIT(id) id = pcb_create()
+        #define PCBB_CB_ADD(id, s) pcb_add(&id, s)
+        #define PCBB_CB_GET(id, s) pcb_in(id, s)
+        #define PCBB_CB_FIRST(id) pcb_find_next(id, "")
+        #define PCBB_CB_NEXT(id, it) pcb_find_next(id, it)
+        #define PCBB_CB_ALL_SUFFIXES(id, s, cb) pcb_find_suffixes(id, s, cb, NULL)
+        #define PCBB_CB_DELETE(id, s) pcb_rem(id, s)
+        #define PCBB_CB_RELEASE(id) pcb_destroy(id)
+        #define PCBB_TIMER_END(timer_str) PCBB_TIMER_GEN_END("pcb", timer_str)
+        #include "benchmark.inc"
+        #undef PCBB_CB_DEF
+        #undef PCBB_CB_IT_DEF
+        #undef PCBB_CB_CB_FUNC_DEF
+        #undef PCBB_CB_INIT
+        #undef PCBB_CB_ADD
+        #undef PCBB_CB_GET
+        #undef PCBB_CB_FIRST
+        #undef PCBB_CB_NEXT
+        #undef PCBB_CB_ALL_SUFFIXES
+        #undef PCBB_CB_DELETE
+        #undef PCBB_CB_RELEASE
+        #undef PCBB_TIMER_END
+        #endif
+    }
 
     /* releases the BLT suite keys */
     _release_blt_suite_keys(&blt_suite_num_keys, &blt_suite_keys);
