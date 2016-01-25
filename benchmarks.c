@@ -22,17 +22,17 @@
 
 /** Whether to benchmark MFCB. */
 #ifndef BENCH_MFCB
-    #define BENCH_MFCB 1
+    #define BENCH_MFCB 0
 #endif
 
 /** Whether to benchmark BLT. */
 #ifndef BENCH_BLT
-    #define BENCH_BLT 1
+    #define BENCH_BLT 0
 #endif
 
 /** Whether to benchmark PCB. */
 #ifndef BENCH_PCB
-    #define BENCH_PCB 1
+    #define BENCH_PCB 0
 #endif
 
 

@@ -22,16 +22,24 @@ test: pcb_test
 valgrind: pcb_test
 	valgrind ./pcb_test
 
-benchmark_exec: $(MFCB_HDR) $(MFCB_SRC) $(BLT_HDR) $(BLT_SRC) $(PCB_HDR) $(PCB_SRC) $(BENCHMARK_HDR) $(BENCHMARK_SRC)
-	gcc -Wall -std=gnu11 -g -O3 -I$(MFCB_INC) -I$(BLT_INC) -I$(PCB_INC) $(MFCB_SRC) $(BLT_SRC) $(PCB_SRC) $(BENCHMARK_SRC) -o $@
+mfcb.benchmark: $(MFCB_HDR) $(MFCB_SRC) $(BENCHMARK_HDR) $(BENCHMARK_SRC)
+	gcc -Wall -DBENCH_MFCB=1 -std=c11 -O3 -I$(MFCB_INC) $(MFCB_SRC) $(BENCHMARK_SRC) -o $@
 
-benchmark: benchmark_exec
-	./benchmark_exec
+blt.benchmark: $(BLT_HDR) $(BLT_SRC) $(BENCHMARK_HDR) $(BENCHMARK_SRC)
+	gcc -Wall -DBENCH_BLT=1 -std=gnu11 -O3 -I$(BLT_INC) $(BLT_SRC) $(BENCHMARK_SRC) -o $@
+
+pcb.benchmark: $(PCB_HDR) $(PCB_SRC) $(BENCHMARK_HDR) $(BENCHMARK_SRC)
+	gcc -Wall -DBENCH_PCB=1 -std=c11 -O3 -I$(PCB_INC) $(PCB_SRC) $(BENCHMARK_SRC) -o $@
+
+benchmark: mfcb.benchmark blt.benchmark pcb.benchmark
+	./mfcb.benchmark
+	./blt.benchmark
+	./pcb.benchmark
 
 callgrind: benchmark_exec
 	valgrind --tool=callgrind --dump-instr=yes --trace-jump=yes --callgrind-out-file=callgrind.out ./benchmark_exec
 
 clean:
-	rm -f pcb_test callgrind.out benchmark_exec
+	rm -f pcb_test callgrind.out *.benchmark
 
 .PHONY: test valgrind callgrind benchmark clean
